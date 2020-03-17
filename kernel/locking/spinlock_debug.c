@@ -66,6 +66,11 @@ static void spin_dump(raw_spinlock_t *lock, const char *msg)
 		owner ? owner->comm : "<none>",
 		owner ? task_pid_nr(owner) : -1,
 		READ_ONCE(lock->owner_cpu));
+#ifdef CONFIG_DEBUG_SPINLOCK_BITE_ON_BUG
+	msm_trigger_wdog_bite();
+#elif defined(CONFIG_DEBUG_SPINLOCK_PANIC_ON_BUG)
+	BUG();
+#endif
 	dump_stack();
 }
 
@@ -108,7 +113,8 @@ static inline void debug_spin_unlock(raw_spinlock_t *lock)
 static void __spin_lock_debug(raw_spinlock_t *lock)
 {
 	u64 i;
-	u64 loops = loops_per_jiffy * HZ * 5;
+	u64 loops = loops_per_jiffy * HZ;
+
 	for (i = 0; i < loops; i++) {
 		if (arch_spin_trylock(&lock->raw_lock))
 			return;
