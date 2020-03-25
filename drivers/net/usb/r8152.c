@@ -10519,20 +10519,20 @@ static void r8156_init(struct r8152 *tp)
 		if (ocp_read_word(tp, MCU_TYPE_PLA, PLA_BOOT_CTRL) &
 		    AUTOLOAD_DONE)
 			break;
+
 		msleep(20);
+		if (test_bit(RTL8152_UNPLUG, &tp->flags))
+			break;
 	}
 
-	data = r8153_phy_status(tp, 0);
-	if (data == PHY_STAT_EXT_INIT) {
-		data = ocp_reg_read(tp, 0xa468);
-		data &= ~(BIT(3) | BIT(0));
-		ocp_reg_write(tp, 0xa468, data);
-	}
+	for (i = 0; i < 500; i++) {
+		ocp_data = ocp_reg_read(tp, OCP_PHY_STATUS) & PHY_STAT_MASK;
+		if (ocp_data == PHY_STAT_LAN_ON || ocp_data == PHY_STAT_PWRDN)
+			break;
 
-	data = r8152_mdio_read(tp, MII_BMCR);
-	if (data & BMCR_PDOWN) {
-		data &= ~BMCR_PDOWN;
-		r8152_mdio_write(tp, MII_BMCR, data);
+		msleep(20);
+		if (test_bit(RTL8152_UNPLUG, &tp->flags))
+			break;
 	}
 
 	data = r8153_phy_status(tp, PHY_STAT_LAN_ON);
